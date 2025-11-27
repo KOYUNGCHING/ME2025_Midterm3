@@ -94,5 +94,4 @@ def product():
 
 
 if __name__ == '__main__':
-    # 這是您原有的啟動配置
     app.run(host='127.0.0.1', port=5500, debug=True)
