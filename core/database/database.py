@@ -65,7 +65,7 @@ class Database():
         # 如果找到，回傳價格（float）；否則回傳 None
         return result[0] if result else None
     
-def add_order(self, order_data):
+    def add_order(self, order_data):
         """將訂單資料字典 (Dictionary) 寫入 order_list 資料表"""
 
         # 確保 order_id 存在
@@ -105,4 +105,29 @@ def add_order(self, order_data):
             conn.commit()
         return deleted_count > 0 # 回傳 True/False 表示是否成功刪除
 
-    def delete_order(self, cur, order_id):
+    # 移除 cur 參數，讓方法獨立運作
+    def get_all_orders(self):
+        """取得所有訂單，並需額外查詢該商品的 price 欄位合併回傳"""
+        with sqlite3.connect(self.db_path) as conn:
+            # 啟用 row_factory 以便以字典形式取得結果，方便合併
+            conn.row_factory = sqlite3.Row 
+            cur = conn.cursor()
+            
+            # 使用 JOIN 查詢 order_list 和 commodity 
+            # 取得所有訂單欄位 + 額外的 commodity.price
+            sql = """
+                SELECT 
+                    o.order_id, o.product_date, o.customer_name, 
+                    o.product_name, o.product_amount, o.product_total, 
+                    o.product_status, o.product_note, c.price 
+                FROM order_list AS o
+                LEFT JOIN commodity AS c 
+                ON o.product_name = c.product
+                ORDER BY o.product_date DESC
+            """
+            cur.execute(sql)
+            
+            # 將結果轉換為列表的字典
+            orders_list = [dict(row) for row in cur.fetchall()]
+        
+        return orders_list
