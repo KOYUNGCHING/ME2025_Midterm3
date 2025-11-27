@@ -65,8 +65,34 @@ class Database():
         # 如果找到，回傳價格（float）；否則回傳 None
         return result[0] if result else None
     
-    def add_order(self, cur, order_data):
+def add_order(self, order_data):
+        """將訂單資料字典 (Dictionary) 寫入 order_list 資料表"""
 
+        # 確保 order_id 存在
+        if 'order_id' not in order_data:
+            order_data['order_id'] = self.generate_order_id()
+
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+
+            sql = """
+                INSERT INTO order_list (
+                    order_id, product_date, customer_name, product_name, 
+                    product_amount, product_total, product_status, product_note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            values = (
+                order_data['order_id'],
+                order_data['product_date'],
+                order_data['customer_name'],
+                order_data['product_name'],
+                order_data['product_amount'],
+                order_data['product_total'],
+                order_data['product_status'],
+                order_data.get('product_note') # 使用 .get() 允許 product_note 為 None
+            )
+            cur.execute(sql, values)
+            conn.commit()
     def get_all_orders(self, cur):
 
     def delete_order(self, cur, order_id):
