@@ -93,6 +93,16 @@ def add_order(self, order_data):
             )
             cur.execute(sql, values)
             conn.commit()
-    def get_all_orders(self, cur):
+
+    # 移除 cur 參數，讓方法獨立運作
+    def delete_order(self, order_id):
+        """根據 order_id 刪除特定訂單"""
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            sql = "DELETE FROM order_list WHERE order_id = ?"
+            cur.execute(sql, (order_id,))
+            deleted_count = cur.rowcount # 檢查刪除了多少行
+            conn.commit()
+        return deleted_count > 0 # 回傳 True/False 表示是否成功刪除
 
     def delete_order(self, cur, order_id):
