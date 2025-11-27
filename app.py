@@ -44,23 +44,23 @@ def product():
 
     # 2. 新增訂單：POST 
     elif request.method == 'POST':
-        # 先拿原始字串
-        product_date  = request.form.get("product_date")
-        customer_name = request.form.get("customer_name")
-        product_name  = request.form.get("product_name")
-        amount_str    = request.form.get("product_amount", "0")
-        total_str     = request.form.get("product_total", "0")
-        product_status = request.form.get("product_status")
-        product_note   = request.form.get("product_note")
+        # 前端實際送來的是 product-date / customer-name 這種 dash 命名
+        # 老師的 test.backend 也是這樣送，所以我們兩種 key 都兼容：
+        product_date  = request.form.get("product_date")  or request.form.get("product-date")
+        customer_name = request.form.get("customer_name") or request.form.get("customer-name")
+        product_name  = request.form.get("product_name")  or request.form.get("product-name")
+        amount_str    = request.form.get("product_amount") or request.form.get("product-amount") or "0"
+        total_str     = request.form.get("product_total")  or request.form.get("product-total")  or "0"
+        product_status = request.form.get("product_status") or request.form.get("product-status")
+        product_note   = request.form.get("product_note")   or request.form.get("product-note")
 
         # 數量：應該是整數
         try:
             product_amount = int(amount_str)
         except ValueError:
-            product_amount = 0   # 或者 1，看你要不要強制設成 1
+            product_amount = 0   # 或者設成 1 看需求
 
-        # 小計：後端資料表是整數，但前端給 "110.00"
-        # 先轉成 float 再轉 int，就不會出現 int("110.00") 的錯誤
+        # 小計：資料表是整數，前端/測試可能給 "110.00" 或 "100"
         try:
             product_total = int(float(total_str))
         except ValueError:
