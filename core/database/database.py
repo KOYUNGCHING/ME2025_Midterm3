@@ -54,8 +54,17 @@ class Database():
             # 將 (('A',), ('B',)) 轉換為 ['A', 'B'] 列表
             results = [row[0] for row in cur.fetchall()]
         return results
-    def get_product_price(self, cur, product):
-
+    
+    def get_product_price(self, product):
+        """根據 product 名稱查詢單價"""
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            sql = "SELECT price FROM commodity WHERE product = ?"
+            cur.execute(sql, (product,))
+            result = cur.fetchone()
+        # 如果找到，回傳價格（float）；否則回傳 None
+        return result[0] if result else None
+    
     def add_order(self, cur, order_data):
 
     def get_all_orders(self, cur):
