@@ -44,57 +44,39 @@ def product():
 
     # 2. 新增訂單：POST 
     elif request.method == 'POST':
+        # 先拿原始字串
+        product_date  = request.form.get("product_date")
+        customer_name = request.form.get("customer_name")
+        product_name  = request.form.get("product_name")
+        amount_str    = request.form.get("product_amount", "0")
+        total_str     = request.form.get("product_total", "0")
+        product_status = request.form.get("product_status")
+        product_note   = request.form.get("product_note")
+
+        # 數量：應該是整數
+        try:
+            product_amount = int(amount_str)
+        except ValueError:
+            product_amount = 0   # 或者 1，看你要不要強制設成 1
+
+        # 小計：後端資料表是整數，但前端給 "110.00"
+        # 先轉成 float 再轉 int，就不會出現 int("110.00") 的錯誤
+        try:
+            product_total = int(float(total_str))
+        except ValueError:
+            product_total = 0
+
         order_data = {
-            # 日期：老師 form 裡叫 'product-date'
-            "product_date": (
-                request.form.get("product_date") or
-                request.form.get("product-date") or
-                request.form.get("date")
-            ),
-            # 客戶名稱：老師 form 裡叫 'customer-name'
-            "customer_name": (
-                request.form.get("customer_name") or
-                request.form.get("customer-name") or
-                request.form.get("customer")
-            ),
-            # 商品名稱：老師 form 裡叫 'product-name'
-            "product_name": (
-                request.form.get("product_name") or
-                request.form.get("product-name") or
-                request.form.get("product")
-            ),
-            # 數量：老師 form 裡叫 'product-amount'
-            "product_amount": int(
-                request.form.get("product_amount") or
-                request.form.get("product-amount") or
-                request.form.get("amount") or
-                0
-            ),
-            # 小計：老師 form 裡叫 'product-total'
-            "product_total": int(
-                request.form.get("product_total") or
-                request.form.get("product-total") or
-                request.form.get("total") or
-                0
-            ),
-            # 狀態：老師 form 裡叫 'product-status'
-            "product_status": (
-                request.form.get("product_status") or
-                request.form.get("product-status") or
-                request.form.get("status")
-            ),
-            # 備註：老師 form 裡叫 'product-note'
-            "product_note": (
-                request.form.get("product_note") or
-                request.form.get("product-note") or
-                request.form.get("note")
-            ),
+            "product_date":   product_date,
+            "customer_name":  customer_name,
+            "product_name":   product_name,
+            "product_amount": product_amount,
+            "product_total":  product_total,
+            "product_status": product_status,
+            "product_note":   product_note,
         }
 
-        # 寫入資料庫（在測試中會被 mock 掉）
         db.add_order(order_data)
-
-        # 寫完後 redirect 回首頁，並帶上 warning 訊息
         return redirect(url_for('index', warning="Order placed successfully"))
     
     # 3. 刪除訂單：DELETE
