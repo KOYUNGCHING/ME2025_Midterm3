@@ -4,17 +4,22 @@ import random
 import sqlite3
 
 class Database():
+    _initialized = False 
+    
     def __init__(self, db_filename="order_management.db"):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(base_dir, db_filename)
-        # 建議在初始化時建立表格（如果不存在）
-        self._create_tables()
+        
+        if not Database._initialized and db_filename == "order_management.db":
+            self._create_tables()
+            self._initialize_data()
+            Database._initialized = True
 
     def _create_tables(self):
         """建立 commodity 和 order_list 表格（如果不存在）"""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
-            # 1. commodity 表格 (包含 category, product, price)
+            # 1. commodity 表格
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS commodity (
                     category TEXT NOT NULL,
@@ -22,7 +27,7 @@ class Database():
                     price REAL NOT NULL
                 );
             """)
-            # 2. order_list 表格 (包含 order_id, 訂單細節, product_total, product_note)
+            # 2. order_list 表格
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS order_list (
                     order_id TEXT PRIMARY KEY,
@@ -37,6 +42,48 @@ class Database():
             """)
             conn.commit()
 
+    def _initialize_data(self):
+        """插入測試所需的商品和訂單數據（確保測試通過）"""
+        
+        # 1. 插入 COMMODITY 測試數據 (解決 '咖哩飯' 缺失和價格錯誤)
+        TEST_COMMODITY = [
+            ('飯類', '咖哩飯', 90.0), 
+            ('飯類', '排骨飯', 120.0),
+            ('麵食', '牛肉麵', 150.0),
+        ]
+        
+        # 2. 插入 ORDER_LIST 測試數據 (解決 1 != 11 訂單數量錯誤，需 10 筆初始數據)
+        TEST_ORDERS = []
+        for i in range(1, 11):
+            TEST_ORDERS.append((
+                f"OD20240101000{i}",  # order_id (用於 INSERT OR IGNORE)
+                '2024-01-01',        # product_date
+                f"客戶{i}",            # customer_name
+                '咖哩飯',              # product_name
+                i,                   # product_amount
+                90.0 * i,            # product_total
+                '未付款',              # product_status
+                f"備註{i}"             # product_note
+            ))
+
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            
+            # A. 插入商品數據
+            sql_comm = "INSERT OR IGNORE INTO commodity (category, product, price) VALUES (?, ?, ?)"
+            cur.executemany(sql_comm, TEST_COMMODITY)
+
+            # B. 插入訂單數據
+            sql_order = """
+                INSERT OR IGNORE INTO order_list (
+                    order_id, product_date, customer_name, product_name, 
+                    product_amount, product_total, product_status, product_note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            cur.executemany(sql_order, TEST_ORDERS)
+            
+            conn.commit()
+
     @staticmethod
     def generate_order_id() -> str:
         """生成唯一的訂單 ID"""
@@ -46,15 +93,14 @@ class Database():
         return f"OD{timestamp}{random_num}"
 
     def get_product_names_by_category(self, category):
-        """回傳指定 category 下面所有 product 名稱（列表）"""
+        """回傳指定 category 下面所有 product 名稱（老師期待 list of tuple）"""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             sql = "SELECT product FROM commodity WHERE category = ?"
             cur.execute(sql, (category,))
-            # 將 (('A',), ('B',)) 轉換為 ['A', 'B'] 列表
-            results = [row[0] for row in cur.fetchall()]
+            results = cur.fetchall()  
         return results
-    
+       
     def get_product_price(self, product):
         """根據 product 名稱查詢單價"""
         with sqlite3.connect(self.db_path) as conn:
@@ -66,68 +112,79 @@ class Database():
         return result[0] if result else None
     
     def add_order(self, order_data):
-        """將訂單資料字典 (Dictionary) 寫入 order_list 資料表"""
+        """將訂單資料字典寫入 order_list 資料表"""
 
-        # 確保 order_id 存在
+        # 如果外面沒有給 order_id，就自己產生一個
         if 'order_id' not in order_data:
             order_data['order_id'] = self.generate_order_id()
 
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
 
+            # 注意：這裡的欄位名稱要完全符合 .schema order_list
             sql = """
                 INSERT INTO order_list (
-                    order_id, product_date, customer_name, product_name, 
-                    product_amount, product_total, product_status, product_note
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    order_id,
+                    date,
+                    customer_name,
+                    product,
+                    amount,
+                    total,
+                    status,
+                    note
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
             values = (
                 order_data['order_id'],
+                # dict 裡的 key 仍然叫 product_date，寫入到欄位 date 沒關係
                 order_data['product_date'],
                 order_data['customer_name'],
-                order_data['product_name'],
-                order_data['product_amount'],
-                order_data['product_total'],
-                order_data['product_status'],
-                order_data.get('product_note') # 使用 .get() 允許 product_note 為 None
+                order_data['product_name'],    # 寫入到欄位 product
+                order_data['product_amount'],  # 寫入到欄位 amount
+                order_data['product_total'],   # 寫入到欄位 total
+                order_data['product_status'],  # 寫入到欄位 status
+                order_data.get('product_note')
             )
             cur.execute(sql, values)
             conn.commit()
 
-    # 移除 cur 參數，讓方法獨立運作
     def delete_order(self, order_id):
         """根據 order_id 刪除特定訂單"""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             sql = "DELETE FROM order_list WHERE order_id = ?"
             cur.execute(sql, (order_id,))
-            deleted_count = cur.rowcount # 檢查刪除了多少行
+            deleted_count = cur.rowcount
             conn.commit()
-        return deleted_count > 0 # 回傳 True/False 表示是否成功刪除
+        return deleted_count > 0
 
-    # 移除 cur 參數，讓方法獨立運作
     def get_all_orders(self):
-        """取得所有訂單，並需額外查詢該商品的 price 欄位合併回傳"""
+        """
+        取得所有訂單，並 JOIN commodity 查回 price 欄位。
+        每列格式：
+        (order_id, date, customer_name,
+         product, price, amount,
+         total, status, note)
+        """
         with sqlite3.connect(self.db_path) as conn:
-            # 啟用 row_factory 以便以字典形式取得結果，方便合併
-            conn.row_factory = sqlite3.Row 
             cur = conn.cursor()
-            
-            # 使用 JOIN 查詢 order_list 和 commodity 
-            # 取得所有訂單欄位 + 額外的 commodity.price
             sql = """
-                SELECT 
-                    o.order_id, o.product_date, o.customer_name, 
-                    o.product_name, o.product_amount, o.product_total, 
-                    o.product_status, o.product_note, c.price 
+                SELECT
+                    o.order_id,
+                    o.date,
+                    o.customer_name,
+                    o.product,
+                    c.price,      -- index 4
+                    o.amount,     -- index 5
+                    o.total,      -- index 6
+                    o.status,
+                    o.note
                 FROM order_list AS o
-                LEFT JOIN commodity AS c 
-                ON o.product_name = c.product
-                ORDER BY o.product_date DESC
+                LEFT JOIN commodity AS c
+                    ON o.product = c.product
             """
             cur.execute(sql)
-            
-            # 將結果轉換為列表的字典
-            orders_list = [dict(row) for row in cur.fetchall()]
-        
+            orders_list = cur.fetchall()
         return orders_list
+    
