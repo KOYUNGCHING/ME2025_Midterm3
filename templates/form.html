@@ -1,5 +1,57 @@
 {% extends 'index.html' %}
 
 {% block form %}
+<form id="order-form" method="post" action="/product">
 
-{% endblock%}
+    <!-- 客戶名稱 -->
+    <label for="customer_name">客戶名稱：</label>
+    <input id="customer_name" name="customer_name" type="text" required>
+
+    <!-- 備註 -->
+    <label for="product_note">備註：</label>
+    <textarea id="product_note" name="product_note"></textarea>
+
+    <!-- 日期 -->
+    <label for="product_date">日期：</label>
+    <input id="product_date" name="product_date" type="date">
+
+    <!-- 數量 -->
+    <label for="product_amount">數量：</label>
+    <input id="product_amount" name="product_amount"
+           type="number" min="0" value="1" oninput="countTotal()">
+
+    <!-- 狀態 -->
+    <label for="product_status">狀態：</label>
+    <select id="product_status" name="product_status">
+        <option value="未付款" selected>未付款</option>
+        <option value="已付款">已付款</option>
+        <option value="已完成">已完成</option>
+    </select>
+
+    <!-- 商品種類 -->
+    <label for="category">商品種類：</label>
+    <select id="category" name="category" onchange="selectCategory()">
+        <option value="">--請選擇--</option>
+        <option value="飲料">飲料</option>
+        <option value="點心">點心</option>
+    </select>
+
+    <!-- 商品名稱 -->
+    <label for="product_name">商品名稱：</label>
+    <select id="product_name" name="product_name" onchange="selectProduct()">
+        <option value="">--請先選擇種類--</option>
+    </select>
+
+    <!-- 單價 -->
+    <label for="product_price">單價：</label>
+    <input id="product_price" name="product_price" type="number" readonly>
+
+    <!-- 小計 -->
+    <label for="product_total">小計：</label>
+    <input id="product_total" name="product_total" type="number" readonly>
+
+    <!-- 送出按鈕 -->
+    <button type="submit">送出訂單</button>
+
+</form>
+{% endblock %}
